@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Despensa">
+<link rel="manifest" href="/estoque-manager/manifest.json">
+<link rel="apple-touch-icon" href="/estoque-manager/icon-192.png">
+<title>Despensa</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --bg2: #16162a;
+    --bg3: #1e1e35;
+    --card: #1a1a30;
+    --card2: #22223a;
+    --accent: #7c6af7;
+    --accent2: #a78bfa;
+    --accent3: #c4b5fd;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --text: #f0eeff;
+    --text2: #a0a0c0;
+    --text3: #6060a0;
+    --border: rgba(124,106,247,0.18);
+    --glow: 0 0 30px rgba(124,106,247,0.15);
+    --r: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  /* ── APP SHELL ── */
+  #app {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    transform: translateY(8px);
+    overflow: hidden;
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+  }
+
+  /* ── SCROLLABLE CONTENT ── */
+  .scroll-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 110px;
+  }
+  .scroll-content::-webkit-scrollbar { display: none; }
+
+  /* ── BOTTOM NAV ── */
+  #bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: rgba(15,15,26,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 8px 0;
+    height: 72px;
+    z-index: 100;
+    /* escudo: bloqueia qualquer toque que não seja nos próprios botões */
+    pointer-events: none;
+  }
+  #bottom-nav > * {
+    pointer-events: all;
+  }
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 60px;
+    border-radius: 12px;
+    border: none;
+    background: transparent;
+    color: var(--text3);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+  }
+  .nav-btn svg { transition: all .2s; }
+  .nav-btn.active { color: var(--accent2); }
+  .nav-btn.active svg { filter: drop-shadow(0 0 6px var(--accent)); }
+  .nav-btn.scan-btn {
+    background: linear-gradient(135deg, var(--accent) 0%, #a78bfa 100%);
+    color: white;
+    box-shadow: 0 4px 20px rgba(124,106,247,0.45);
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    margin: 0 8px;
+  }
+  .nav-btn.scan-btn svg { width: 26px; height: 26px; }
+  .nav-btn span { font-size: 10px; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 52px 20px 16px;
+    background: linear-gradient(180deg, var(--bg) 0%, transparent 100%);
+    position: relative;
+    z-index: 10;
+  }
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--text);
+    letter-spacing: -.02em;
+  }
+  .header h1 span { color: var(--accent2); }
+  .header p { color: var(--text2); font-size: 13px; margin-top: 2px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+  }
+  .card-lg {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 20px;
+  }
+
+  /* ── HOME SCREEN ── */
+  .home-stats {
+    padding: 4px 20px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+  .stat-card.purple::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .stat-card.green::before { background: linear-gradient(90deg, var(--green), #6ee7b7); }
+  .stat-card.yellow::before { background: linear-gradient(90deg, var(--yellow), #fde68a); }
+  .stat-card.red::before { background: linear-gradient(90deg, var(--red), #fca5a5); }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .stat-label { color: var(--text2); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: .06em; }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--text3);
+    padding: 20px 20px 10px;
+  }
+
+  /* ── ALERTS ── */
+  .alert-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
+  .alert-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; box-shadow: 0 0 8px var(--red); }
+  .alert-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .alert-qty { font-size: 12px; color: var(--red); font-weight: 600; }
+
+  /* ── ESTOQUE SCREEN ── */
+  .search-wrap { padding: 0 20px 12px; }
+  .search-input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px 12px 44px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+    position: relative;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text3); }
+  .search-wrap { position: relative; }
+  .search-icon {
+    position: absolute;
+    left: 32px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+  }
+
+  /* category tabs */
+  .cat-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 0 20px 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .cat-tabs::-webkit-scrollbar { display: none; }
+  .cat-tab {
+    flex-shrink: 0;
+    padding: 7px 16px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .cat-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    box-shadow: 0 2px 12px rgba(124,106,247,0.4);
+  }
+
+  .product-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
+  .product-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    transition: all .2s;
+    cursor: pointer;
+    animation: slideIn .25s ease forwards;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .product-item:active { transform: scale(.98); }
+  .product-emoji {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: var(--card2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .product-info { flex: 1; min-width: 0; }
+  .product-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-cat { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .product-qty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .qty-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .qty-num.zero { color: var(--red); }
+  .qty-num.low { color: var(--yellow); }
+  .qty-num.ok { color: var(--green); }
+  .qty-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,20,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+  }
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .modal {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--bg2);
+    border-radius: 24px 24px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    padding: 0 0 32px;
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(0.34,1.56,0.64,1);
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+  .modal-overlay.open .modal {
+    transform: translateY(0);
+  }
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 0;
+  }
+  .modal-header {
+    padding: 20px 20px 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+  }
+  .modal-sub { color: var(--text2); font-size: 13px; margin-top: 3px; }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+
+  /* quick actions in modal */
+  .quick-btns {
+    display: flex;
+    gap: 8px;
+    padding: 20px 20px 0;
+  }
+  .quick-btn {
+    flex: 1;
+    padding: 14px 0;
+    border-radius: 14px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .quick-btn:active { transform: scale(.95); }
+  .quick-btn.add { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; box-shadow: 0 4px 16px rgba(124,106,247,0.35); }
+  .quick-btn.remove { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
+  .quick-btn.add-custom { background: var(--card2); color: var(--accent2); border: 1px solid var(--border); font-size: 13px; }
+
+  /* big qty display */
+  .modal-qty-display {
+    text-align: center;
+    padding: 24px 0 8px;
+  }
+  .modal-qty-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .modal-qty-label { color: var(--text2); font-size: 13px; margin-top: 4px; }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 20px 0;
+  }
+
+  /* input */
+  .input-row { padding: 16px 20px 0; display: flex; flex-direction: column; gap: 8px; }
+  .input-label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+  .text-input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  .text-input:focus { border-color: var(--accent); }
+  .text-input::placeholder { color: var(--text3); }
+  select.text-input { cursor: pointer; }
+  select.text-input option { background: var(--bg2); }
+
+  .action-btn {
+    width: calc(100% - 40px);
+    margin: 16px 20px 0;
+    padding: 16px;
+    border-radius: 14px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .action-btn.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    box-shadow: 0 4px 20px rgba(124,106,247,0.35);
+  }
+  .action-btn.danger { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+  .action-btn:active { transform: scale(.98); }
+
+  /* ── SCANNER OVERLAY (isolado, fora do #app) ── */
+  @keyframes scanMove {
+    0%, 100% { top: 4px; }
+    50% { top: calc(100% - 6px); }
+  }
+
+  /* ── HISTORICO ── */
+  .hist-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
+  .hist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .hist-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .hist-icon.entry { background: rgba(52,211,153,0.15); }
+  .hist-icon.exit { background: rgba(248,113,113,0.1); }
+  .hist-info { flex: 1; min-width: 0; }
+  .hist-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hist-date { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .hist-qty { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; }
+  .hist-qty.entry { color: var(--green); }
+  .hist-qty.exit { color: var(--red); }
+
+  /* ── LISTA DE COMPRAS ── */
+  .shopping-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .shopping-item.checked {
+    opacity: .5;
+  }
+  .check-circle {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all .2s;
+  }
+  .shopping-item.checked .check-circle {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    z-index: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: all .3s;
+    white-space: nowrap;
+    max-width: calc(100% - 40px);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* empty state */
+  .empty {
+    text-align: center;
+    padding: 60px 40px;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty h3 { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--text2); margin-bottom: 6px; }
+  .empty p { font-size: 13px; line-height: 1.6; }
+
+  /* FAB */
+  .fab {
+    position: absolute;
+    bottom: 84px;
+    right: 20px;
+    width: 48px; height: 48px;
+    border-radius: 16px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--accent2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    transition: all .2s;
+    z-index: 50;
+  }
+  .fab:active { transform: scale(.92); }
+
+  /* badge */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .badge.cat {
+    background: rgba(124,106,247,0.15);
+    color: var(--accent2);
+  }
+
+  /* expiry */
+  .expiry-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-weight: 600;
+  }
+  .expiry-ok { background: rgba(52,211,153,0.15); color: var(--green); }
+  .expiry-soon { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .expiry-expired { background: rgba(248,113,113,0.15); color: var(--red); }
+
+  /* whatsapp share */
+  .wa-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: calc(100% - 40px);
+    margin: 12px 20px 0;
+    padding: 14px 20px;
+    border-radius: 14px;
+    border: none;
+    background: rgba(37,211,102,0.12);
+    border: 1px solid rgba(37,211,102,0.25);
+    color: #25d366;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .wa-btn:active { transform: scale(.98); }
+
+  /* number stepper */
+  .stepper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px 20px 0;
+  }
+  .stepper-btn {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 22px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .stepper-btn:active { transform: scale(.92); background: var(--card2); }
+  .stepper-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    width: 60px;
+    text-align: center;
+  }
+
+  /* progress bar */
+  .progress-bar {
+    height: 3px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+
+  @media (prefers-color-scheme: light) { /* still dark */ }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════ HOME ══════════ -->
+  <div class="screen active" id="home-screen">
+    <div class="header">
+      <h1>Minha <span>Despensa</span></h1>
+      <p id="home-date"></p>
+    </div>
+    <div class="scroll-content">
+      <div class="home-stats">
+        <div class="stat-card purple">
+          <div class="stat-num" id="stat-total">0</div>
+          <div class="stat-label">Produtos</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-num" id="stat-ok">0</div>
+          <div class="stat-label">Em estoque</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-num" id="stat-low">0</div>
+          <div class="stat-label">Acabando</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-num" id="stat-empty">0</div>
+          <div class="stat-label">Zerados</div>
+        </div>
+      </div>
+
+      <div class="section-title" id="alerts-title" style="display:none">⚠ Atenção</div>
+      <div class="alert-list" id="alerts-list"></div>
+
+      <div class="section-title">📦 Recentes</div>
+      <div class="product-list" id="recent-list">
+        <div class="empty"><div class="empty-icon">🛒</div><h3>Estoque vazio</h3><p>Escaneie um produto para começar</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ESTOQUE ══════════ -->
+  <div class="screen" id="stock-screen">
+    <div class="header">
+      <h1>Estoque</h1>
+      <p>Ajuste da quantidade e edição dos produtos</p>
+    </div>
+    <div class="search-wrap" style="padding:0 20px 12px;position:relative;">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" id="search-input" type="search" placeholder="Buscar produto…" oninput="filterProducts()">
+    </div>
+    <div class="cat-tabs" id="cat-tabs">
+      <button class="cat-tab active" onclick="filterCat('Todos',this)">Todos</button>
+    </div>
+    <div class="scroll-content" style="padding-bottom:90px">
+      <div class="product-list" id="stock-list"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ SCANNER (placeholder vazio — o overlay real fica fora do #app) ══════════ -->
+
+  <!-- ══════════ HISTÓRICO ══════════ -->
+  <div class="screen" id="history-screen">
+    <div class="header">
+      <h1>Histórico</h1>
+      <p>Movimentações recentes</p>
+    </div>
+    <div class="scroll-content">
+      <div class="hist-list" id="hist-list">
+        <div class="empty"><div class="empty-icon">📋</div><h3>Sem movimentos</h3><p>O histórico aparece aqui</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ LISTA DE COMPRAS ══════════ -->
+  <div class="screen" id="shopping-screen">
+    <div class="header">
+      <h1>Lista de <span style="color:var(--accent2)">Compras</span></h1>
+      <p>Itens zerados ou quase acabando</p>
+    </div>
+    <div class="scroll-content">
+      <button class="wa-btn" onclick="shareWhatsapp()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Compartilhar no WhatsApp
+      </button>
+      <div class="section-title" style="padding-top:16px">Itens para comprar</div>
+      <div class="product-list" id="shopping-list" style="padding:0 20px;gap:8px"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ BOTTOM NAV ══════════ -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="showScreen('home')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Início</span>
+    </button>
+    <button class="nav-btn" id="nav-stock" onclick="showScreen('stock')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <span>Estoque</span>
+    </button>
+    <button class="nav-btn scan-btn" onclick="openScanner()" style="touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><rect x="10" y="10" width="8" height="4" rx="1"/></svg>
+    </button>
+    <button class="nav-btn" id="nav-history" onclick="showScreen('history')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Histórico</span>
+    </button>
+    <button class="nav-btn" id="nav-shopping" onclick="showScreen('shopping')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg>
+      <span>Compras</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Product action modal -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="pm-name">Produto</div>
+        <div class="modal-sub" id="pm-sub">Categoria</div>
+      </div>
+      <button class="modal-close" onclick="closeProductModal()">×</button>
+    </div>
+    <div class="modal-qty-display">
+      <div class="modal-qty-num" id="pm-qty">0</div>
+      <div class="modal-qty-label">em estoque</div>
+    </div>
+    <div id="pm-edit-controls">
+      <div class="quick-btns">
+        <button class="quick-btn add" onclick="quickAdd(1)">+1</button>
+        <button class="quick-btn add" onclick="quickAdd(3)">+3</button>
+        <button class="quick-btn add" onclick="quickAdd(5)">+5</button>
+      </div>
+      <div class="quick-btns" style="padding-top:8px">
+        <button class="quick-btn remove" onclick="quickRemove(1)">&#8722;1</button>
+        <button class="quick-btn add-custom" onclick="showCustomQty()">Personalizado</button>
+      </div>
+    </div>
+    <div id="pm-readonly-hint" style="display:none;padding:14px 20px 0;text-align:center;color:var(--text3);font-size:13px;">
+      V&#225; para <strong style="color:var(--accent2)">Estoque</strong> para editar quantidades
+    </div>
+    <div class="divider"></div>
+    <div id="pm-extra-fields">
+      <div class="input-row">
+        <div class="input-label">Categoria</div>
+        <select class="text-input" id="pm-cat" onchange="saveCatOnly()">
+          <option value="Geladeira">🥶 Geladeira</option>
+          <option value="Despensa">🏠 Despensa</option>
+          <option value="Congelador">🧊 Congelador</option>
+          <option value="Bebidas">🥤 Bebidas</option>
+          <option value="Hortifruti">🥦 Hortifruti</option>
+          <option value="Limpeza">🧹 Limpeza</option>
+          <option value="Higiene">🪥 Higiene</option>
+          <option value="Outros">📦 Outros</option>
+        </select>
+      </div>
+      <div class="input-row">
+        <div class="input-label">Alerta de estoque baixo</div>
+        <input type="number" class="text-input" id="pm-alert-val" min="0" placeholder="Ex: 2" onchange="saveAlertOnly()">
+      </div>
+    </div>
+    <div class="input-row" id="expiry-row">
+      <div class="input-label">Validade</div>
+      <input type="date" class="text-input" id="pm-expiry" onchange="saveExpiryOnly()">
+    </div>
+    <button class="action-btn primary" onclick="closeProductModal()" style="margin-top:16px">Fechar</button>
+    <button class="action-btn danger" id="pm-delete-btn" onclick="deleteProduct()">Remover produto</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- New product modal -->
+<div class="modal-overlay" id="new-product-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Novo Produto</div>
+        <div class="modal-sub" id="npm-code">Código detectado</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('new-product-modal')">×</button>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Nome do produto</div>
+      <input type="text" class="text-input" id="npm-name" placeholder="Ex: Ketchup Heinz 397g" autocomplete="off">
+    </div>
+    <div class="input-row">
+      <div class="input-label">Categoria</div>
+      <select class="text-input" id="npm-cat">
+        <option value="Geladeira">🥶 Geladeira</option>
+        <option value="Despensa" selected>🏠 Despensa</option>
+        <option value="Congelador">🧊 Congelador</option>
+        <option value="Bebidas">🥤 Bebidas</option>
+        <option value="Hortifruti">🥦 Hortifruti</option>
+        <option value="Limpeza">🧹 Limpeza</option>
+        <option value="Higiene">🪥 Higiene</option>
+        <option value="Outros">📦 Outros</option>
+      </select>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Quantidade inicial</div>
+      <div class="stepper">
+        <div class="stepper-btn" onclick="stepQty(-1)">−</div>
+        <div class="stepper-val" id="npm-qty">1</div>
+        <div class="stepper-btn" onclick="stepQty(1)">+</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Alerta de estoque baixo (opcional)</div>
+      <input type="number" class="text-input" id="npm-alert" placeholder="Ex: 2" min="0">
+    </div>
+    <button class="action-btn primary" onclick="saveNewProduct()">Cadastrar produto</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Custom qty modal -->
+<div class="modal-overlay" id="custom-qty-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div><div class="modal-title">Quantidade</div></div>
+      <button class="modal-close" onclick="closeModal('custom-qty-modal')">×</button>
+    </div>
+    <div class="input-row" style="padding-top:20px">
+      <div class="input-label">Operação</div>
+      <select class="text-input" id="cq-op">
+        <option value="add">Adicionar (+)</option>
+        <option value="remove">Remover (−)</option>
+        <option value="set">Definir quantidade</option>
+      </select>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Quantidade</div>
+      <input type="number" class="text-input" id="cq-val" min="0" placeholder="0">
+    </div>
+    <button class="action-btn primary" onclick="applyCustomQty()">Aplicar</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Modal: digitar código manualmente -->
+<div class="modal-overlay" id="manual-code-modal" style="z-index:10000">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div><div class="modal-title">Digitar código</div></div>
+      <button class="modal-close" onclick="closeModal('manual-code-modal')">×</button>
+    </div>
+    <div class="input-row" style="padding-top:20px">
+      <div class="input-label">Código do produto</div>
+      <input type="text" class="text-input" id="manual-code-input"
+        placeholder="Ex: 7891000100103"
+        inputmode="numeric"
+        autocomplete="off"
+        onkeydown="if(event.key==='Enter') confirmManualCode()">
+    </div>
+    <button class="action-btn primary" onclick="confirmManualCode()" style="margin-top:16px">Confirmar</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<script>
+// ════════════════════════════════════════
+//  STORAGE
+// ════════════════════════════════════════
+const DB = {
+  products: JSON.parse(localStorage.getItem('dp_products') || '[]'),
+  stock: JSON.parse(localStorage.getItem('dp_stock') || '{}'),
+  history: JSON.parse(localStorage.getItem('dp_history') || '[]'),
+  save() {
+    localStorage.setItem('dp_products', JSON.stringify(this.products));
+    localStorage.setItem('dp_stock', JSON.stringify(this.stock));
+    localStorage.setItem('dp_history', JSON.stringify(this.history));
+  }
+};
+
+const EMOJIS = {
+  Geladeira:'🥛', Despensa:'🏠', Congelador:'🧊', Bebidas:'🥤',
+  Hortifruti:'🥦', Limpeza:'🧹', Higiene:'🪥', Outros:'📦'
+};
+
+// ════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════
+let currentScreen = 'home';
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name + '-screen').classList.add('active');
+  const nb = document.getElementById('nav-' + name);
+  if (nb) nb.classList.add('active');
+  currentScreen = name;
+  if (name === 'home') renderHome();
+  if (name === 'stock') renderStock();
+  if (name === 'history') renderHistory();
+  if (name === 'shopping') renderShopping();
+}
+
+// Atualiza a tela atual sem navegar — FIX #5
+function refreshCurrentScreen() {
+  if (currentScreen === 'home') renderHome();
+  else if (currentScreen === 'stock') renderStock();
+  else if (currentScreen === 'history') renderHistory();
+  else if (currentScreen === 'shopping') renderShopping();
+}
+
+// ════════════════════════════════════════
+//  SCANNER — BarcodeDetector (Android/Chrome) + ZXing API alto nível (iOS/Safari)
+// ════════════════════════════════════════
+let _stream = null;
+let _lastCode = null;
+let _screenBeforeScanner = 'home';
+let _nativeDetector = null;
+let _zxingHLReader = null; // BrowserMultiFormatReader — API de alto nível, funciona no iOS
+let _scanActive = false;
+let _scanRafId = null;
+
+// Pré-inicializa detectores assim que ZXing carrega
+function initDetectors() {
+  if ('BarcodeDetector' in window) {
+    try {
+      _nativeDetector = new BarcodeDetector({
+        formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code','data_matrix','itf','codabar']
+      });
+    } catch(e) { _nativeDetector = null; }
+  }
+  if (window.ZXing) {
+    try {
+      _zxingHLReader = new ZXing.BrowserMultiFormatReader();
+    } catch(e) { _zxingHLReader = null; }
+  }
+}
+
+// ZXing pode demorar a carregar — tenta agora e também quando o script terminar
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDetectors);
+} else {
+  initDetectors();
+}
+
+async function openScanner() {
+  _screenBeforeScanner = currentScreen;
+  _lastCode = null;
+  _scanActive = true;
+  // Mostra o overlay isolado — não toca no sistema de .screen
+  document.getElementById('scanner-overlay').style.display = 'block';
+
+  // Garante que detectores estão prontos
+  if (!_nativeDetector && !_zxingHLReader) initDetectors();
+
+  const vid = document.getElementById('scanner-video');
+
+  try {
+    _stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    });
+    vid.srcObject = _stream;
+    await vid.play();
+
+    if (_nativeDetector) {
+      // Android/Chrome: BarcodeDetector nativo — rápido e preciso
+      startNativeScan(vid);
+    } else if (_zxingHLReader) {
+      // iOS/Safari: ZXing API de alto nível — usa decodeFromStream internamente
+      startZXingHighLevel();
+    } else {
+      showToast('Scanner não disponível. Use o código manual.');
+    }
+  } catch(e) {
+    showToast('Permita o acesso à câmera e tente novamente.');
+    stopScan();
+    showScreen(_screenBeforeScanner);
+  }
+}
+
+// ── Android/Chrome: BarcodeDetector nativo ──
+function startNativeScan(vid) {
+  const loop = async () => {
+    if (!_scanActive) return;
+    try {
+      if (vid.readyState === vid.HAVE_ENOUGH_DATA) {
+        const results = await _nativeDetector.detect(vid);
+        if (results.length > 0) {
+          const code = results[0].rawValue;
+          if (code && code !== _lastCode) {
+            _lastCode = code;
+            stopScan();
+            handleCode(code);
+            return;
+          }
+        }
+      }
+    } catch(e) {}
+    _scanRafId = requestAnimationFrame(loop);
+  };
+  _scanRafId = requestAnimationFrame(loop);
+}
+
+// ── iOS/Safari: ZXing BrowserMultiFormatReader (API de alto nível) ──
+// Este método usa decodeFromStream que é otimizado pelo próprio ZXing para vídeo
+function startZXingHighLevel() {
+  const vid = document.getElementById('scanner-video');
+  if (!_stream) return;
+
+  _zxingHLReader.decodeFromStream(_stream, vid, (result, err) => {
+    if (!_scanActive) return;
+    if (result) {
+      const code = result.getText();
+      if (code && code !== _lastCode) {
+        _lastCode = code;
+        stopScan();
+        handleCode(code);
+      }
+    }
+    // err do tipo NotFoundException é normal quando não há código no frame — ignorar
+  });
+}
+
+function stopScan() {
+  _scanActive = false;
+  if (_scanRafId) { cancelAnimationFrame(_scanRafId); _scanRafId = null; }
+  if (_zxingHLReader) {
+    try { _zxingHLReader.reset(); } catch(e) {}
+  }
+  if (_stream) {
+    _stream.getTracks().forEach(t => t.stop());
+    _stream = null;
+  }
+  const vid = document.getElementById('scanner-video');
+  if (vid) vid.srcObject = null;
+}
+
+function closeScanner() {
+  stopScan();
+  // Esconde o overlay — a tela anterior continua intacta por baixo
+  document.getElementById('scanner-overlay').style.display = 'none';
+  // Garante que a tela de origem está ativa (pode ter sido limpada)
+  showScreen(_screenBeforeScanner);
+}
+
+function manualCode() {
+  document.getElementById('manual-code-input').value = '';
+  openModal('manual-code-modal');
+  setTimeout(() => document.getElementById('manual-code-input').focus(), 350);
+}
+
+function confirmManualCode() {
+  const code = document.getElementById('manual-code-input').value.trim();
+  if (!code) { showToast('Digite um código'); return; }
+  closeModal('manual-code-modal');
+  stopScan();
+  handleCode(code);
+}
+
+function handleCode(code) {
+  // Garante que o overlay do scanner está fechado antes de qualquer ação
+  document.getElementById('scanner-overlay').style.display = 'none';
+  const product = DB.products.find(p => p.code === code);
+  if (product) {
+    showScreen('home');
+    openProductModal(product);
+  } else {
+    // Produto desconhecido: vai para início, abre modal de cadastro — FIX #4
+    _newQty = 1; // FIX #1: reseta qty antes de abrir modal
+    document.getElementById('npm-code').textContent = code;
+    document.getElementById('npm-name').value = '';
+    document.getElementById('npm-qty').textContent = '1';
+    document.getElementById('npm-alert').value = '';
+    document.getElementById('npm-cat').value = 'Despensa';
+    window._pendingCode = code;
+    showScreen('home');
+    openModal('new-product-modal');
+    setTimeout(() => document.getElementById('npm-name').focus(), 350);
+  }
+}
+
+// ════════════════════════════════════════
+//  PRODUCT MODAL
+// ════════════════════════════════════════
+let _activeProduct = null;
+
+// Debounce para consolidar cliques rápidos no histórico — FIX #7
+let _pendingHistEntry = null;   // {pid, type, delta, timer}
+
+function flushHistory() {
+  if (!_pendingHistEntry) return;
+  clearTimeout(_pendingHistEntry.timer);
+  if (_pendingHistEntry.delta !== 0) {
+    DB.history.unshift({
+      pid: _pendingHistEntry.pid,
+      type: _pendingHistEntry.type,
+      qty: Math.abs(_pendingHistEntry.delta),
+      date: new Date().toISOString()
+    });
+    DB.save();
+  }
+  _pendingHistEntry = null;
+}
+
+function scheduleHistory(pid, type, delta) {
+  // Se já tem pendente para o mesmo produto e tipo, acumula
+  if (_pendingHistEntry && _pendingHistEntry.pid === pid && _pendingHistEntry.type === type) {
+    clearTimeout(_pendingHistEntry.timer);
+    _pendingHistEntry.delta += delta;
+  } else {
+    // Outro produto/tipo: salva o anterior imediatamente
+    flushHistory();
+    _pendingHistEntry = { pid, type, delta };
+  }
+  // Aguarda 1.5s sem cliques para registrar
+  _pendingHistEntry.timer = setTimeout(flushHistory, 1500);
+}
+
+function handleAlertClick(el) {
+  const id = el.dataset.pid;
+  const product = DB.products.find(p => p.id === id);
+  if (product) openProductModal(product);
+}
+
+function handleProductClick(el) {
+  const id = el.dataset.pid;
+  const product = DB.products.find(p => p.id === id);
+  if (!product) return;
+  if (currentScreen === 'home') {
+    openProductModalReadOnly(product);
+  } else {
+    openProductModal(product);
+  }
+}
+
+function openProductModalReadOnly(product) {
+  // Modal de visualização — sem botões de +/- nem remover
+  flushHistory();
+  _activeProduct = product;
+  const qty = DB.stock[product.id] ?? 0;
+  document.getElementById('pm-name').textContent = product.name;
+  document.getElementById('pm-sub').textContent = `${EMOJIS[product.cat] || '📦'} ${product.cat}  •  Código: ${product.code}`;
+  document.getElementById('pm-qty').textContent = qty;
+  document.getElementById('pm-qty').className = 'modal-qty-num ' + qtyClass(qty, product.alert);
+  document.getElementById('pm-expiry').value = product.expiry || '';
+  document.getElementById('expiry-row').style.display = qty === 0 ? 'none' : '';
+  document.getElementById('pm-cat').value = product.cat || 'Despensa';
+  document.getElementById('pm-alert-val').value = product.alert || '';
+  // Esconde controles de edição
+  document.getElementById('pm-edit-controls').style.display = 'none';
+  document.getElementById('pm-extra-fields').style.display = 'none';
+  document.getElementById('pm-delete-btn').style.display = 'none';
+  document.getElementById('pm-readonly-hint').style.display = '';
+  openModal('product-modal');
+}
+
+function openProductModal(product) {
+  // Garante que flushamos histórico pendente de qualquer produto anterior — FIX #7/#8
+  flushHistory();
+  _activeProduct = product;
+  const qty = DB.stock[product.id] ?? 0;
+  document.getElementById('pm-name').textContent = product.name;
+  document.getElementById('pm-sub').textContent = `${EMOJIS[product.cat] || '📦'} ${product.cat}  •  Código: ${product.code}`;
+  document.getElementById('pm-qty').textContent = qty;
+  document.getElementById('pm-qty').className = 'modal-qty-num ' + qtyClass(qty, product.alert);
+  document.getElementById('pm-expiry').value = product.expiry || '';
+  document.getElementById('expiry-row').style.display = qty === 0 ? 'none' : '';
+  document.getElementById('pm-cat').value = product.cat || 'Despensa';
+  document.getElementById('pm-alert-val').value = product.alert || '';
+  // Garante que controles de edição estão visíveis
+  document.getElementById('pm-edit-controls').style.display = '';
+  document.getElementById('pm-extra-fields').style.display = '';
+  document.getElementById('pm-delete-btn').style.display = '';
+  document.getElementById('pm-readonly-hint').style.display = 'none';
+  openModal('product-modal');
+}
+
+function updateModalQty(newQty) {
+  document.getElementById('pm-qty').textContent = newQty;
+  document.getElementById('pm-qty').className = 'modal-qty-num ' + qtyClass(newQty, _activeProduct.alert);
+  // Esconde validade se zerou — FIX #2
+  document.getElementById('expiry-row').style.display = newQty === 0 ? 'none' : '';
+  if (newQty === 0) {
+    // Limpa a validade ao zerar — FIX #2
+    _activeProduct.expiry = '';
+    document.getElementById('pm-expiry').value = '';
+    const idx = DB.products.findIndex(p => p.id === _activeProduct.id);
+    if (idx >= 0) DB.products[idx].expiry = '';
+  }
+}
+
+function quickAdd(n) {
+  if (!_activeProduct) return;
+  DB.stock[_activeProduct.id] = (DB.stock[_activeProduct.id] || 0) + n;
+  const qty = DB.stock[_activeProduct.id];
+  DB.save(); // FIX #8: salva imediatamente
+  updateModalQty(qty);
+  scheduleHistory(_activeProduct.id, 'entry', n); // FIX #7: acumula no histórico
+  refreshCurrentScreen(); // FIX #5: atualiza tela de fundo
+  showToast(`+${n} · ${_activeProduct.name} (${qty})`);
+}
+
+function quickRemove(n) {
+  if (!_activeProduct) return;
+  const curr = DB.stock[_activeProduct.id] || 0;
+  const newQty = Math.max(0, curr - n);
+  const removed = curr - newQty;
+  DB.stock[_activeProduct.id] = newQty;
+  DB.save(); // FIX #8: salva imediatamente
+  updateModalQty(newQty);
+  if (removed > 0) scheduleHistory(_activeProduct.id, 'exit', removed); // FIX #7
+  refreshCurrentScreen(); // FIX #5
+  showToast(`−${removed} · ${_activeProduct.name} (${newQty})`);
+}
+
+function showCustomQty() {
+  document.getElementById('cq-val').value = '';
+  openModal('custom-qty-modal');
+}
+
+function applyCustomQty() {
+  if (!_activeProduct) return;
+  const op = document.getElementById('cq-op').value;
+  const val = parseInt(document.getElementById('cq-val').value) || 0;
+  const curr = DB.stock[_activeProduct.id] || 0;
+  let newQty, histQty, histType;
+  if (op === 'add') { newQty = curr + val; histQty = val; histType = 'entry'; }
+  else if (op === 'remove') { newQty = Math.max(0, curr - val); histQty = curr - newQty; histType = 'exit'; }
+  else { newQty = Math.max(0, val); histQty = Math.abs(newQty - curr); histType = newQty >= curr ? 'entry' : 'exit'; }
+  flushHistory(); // FIX #7: garante que pendente anterior foi salvo
+  DB.stock[_activeProduct.id] = newQty;
+  if (histQty > 0) DB.history.unshift({pid: _activeProduct.id, type:histType, qty:histQty, date: new Date().toISOString()});
+  DB.save(); // FIX #8
+  closeModal('custom-qty-modal');
+  updateModalQty(newQty);
+  refreshCurrentScreen(); // FIX #5
+  showToast(`Estoque atualizado: ${newQty}`);
+}
+
+function saveCatOnly() {
+  if (!_activeProduct) return;
+  const newCat = document.getElementById('pm-cat').value;
+  _activeProduct.cat = newCat;
+  const idx = DB.products.findIndex(p => p.id === _activeProduct.id);
+  if (idx >= 0) DB.products[idx].cat = newCat;
+  DB.save();
+  refreshCurrentScreen();
+  showToast('Categoria atualizada!');
+}
+
+function saveAlertOnly() {
+  if (!_activeProduct) return;
+  const val = parseInt(document.getElementById('pm-alert-val').value) || 0;
+  _activeProduct.alert = val;
+  const idx = DB.products.findIndex(p => p.id === _activeProduct.id);
+  if (idx >= 0) DB.products[idx].alert = val;
+  DB.save();
+  refreshCurrentScreen();
+  showToast('Alerta atualizado!');
+}
+
+function saveExpiryOnly() {
+  if (!_activeProduct) return;
+  _activeProduct.expiry = document.getElementById('pm-expiry').value;
+  const idx = DB.products.findIndex(p => p.id === _activeProduct.id);
+  if (idx >= 0) DB.products[idx].expiry = _activeProduct.expiry;
+  DB.save();
+  refreshCurrentScreen();
+  showToast('Validade salva!');
+}
+
+function closeProductModal() {
+  if (!_activeProduct) return;
+  flushHistory();
+  _activeProduct.expiry = document.getElementById('pm-expiry').value;
+  const idx = DB.products.findIndex(p => p.id === _activeProduct.id);
+  if (idx >= 0) DB.products[idx].expiry = _activeProduct.expiry;
+  DB.save();
+  closeModal('product-modal');
+  refreshCurrentScreen();
+}
+
+function deleteProduct() {
+  if (!_activeProduct || !confirm(`Remover "${_activeProduct.name}"?`)) return;
+  flushHistory();
+  // Grava o nome em todos os registros de histórico deste produto antes de deletar
+  const nameSnapshot = _activeProduct.name;
+  DB.history = DB.history.map(h =>
+    h.pid === _activeProduct.id ? { ...h, deletedName: nameSnapshot } : h
+  );
+  DB.products = DB.products.filter(p => p.id !== _activeProduct.id);
+  delete DB.stock[_activeProduct.id];
+  DB.save();
+  closeModal('product-modal');
+  refreshCurrentScreen();
+  showToast('Produto removido');
+}
+
+// Fechar clicando fora do modal
+document.getElementById('product-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeProductModal();
+});
+
+// ════════════════════════════════════════
+//  NEW PRODUCT
+// ════════════════════════════════════════
+let _newQty = 1; // FIX #1: variável isolada, resetada em handleCode
+
+function stepQty(delta) {
+  _newQty = Math.max(0, _newQty + delta); // FIX #1: usa _newQty limpo, sem depender de estado anterior
+  document.getElementById('npm-qty').textContent = _newQty;
+}
+
+function saveNewProduct() {
+  const name = document.getElementById('npm-name').value.trim();
+  if (!name) { document.getElementById('npm-name').focus(); showToast('Digite o nome do produto'); return; }
+  const cat = document.getElementById('npm-cat').value;
+  const qty = _newQty; // FIX #1: usa variável local, não o texto do DOM
+  const alertVal = parseInt(document.getElementById('npm-alert').value) || 0;
+  const code = window._pendingCode || Date.now().toString();
+  const id = 'p' + Date.now();
+  DB.products.push({id, code, name, cat, alert: alertVal, expiry:''});
+  DB.stock[id] = qty;
+  if (qty > 0) DB.history.unshift({pid: id, type:'entry', qty, date: new Date().toISOString()});
+  DB.save();
+  window._pendingCode = null;
+  _newQty = 1; // FIX #1: reset após salvar
+  closeModal('new-product-modal');
+  showToast(`✓ "${name}" cadastrado!`);
+  // Sempre vai para início após cadastro — FIX #4
+  showScreen('home');
+  renderCatTabs();
+}
+
+// ════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════
+function qtyClass(qty, alert=2) {
+  if (qty === 0) return 'zero';
+  if (qty <= (alert || 2)) return 'low';
+  return 'ok';
+}
+
+function renderHome() {
+  const today = new Date();
+  document.getElementById('home-date').textContent = today.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+
+  const total = DB.products.length;
+  const empty = DB.products.filter(p => (DB.stock[p.id]||0) === 0).length;
+  const low = DB.products.filter(p => { const q=DB.stock[p.id]||0; return q>0 && q<=(p.alert||2); }).length;
+  const ok = total - empty - low;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-ok').textContent = ok;
+  document.getElementById('stat-low').textContent = low;
+  document.getElementById('stat-empty').textContent = empty;
+
+  // alerts
+  const alerts = DB.products.filter(p => (DB.stock[p.id]||0) <= (p.alert||2));
+  const alertsEl = document.getElementById('alerts-list');
+  const alertsTitle = document.getElementById('alerts-title');
+  if (alerts.length) {
+    alertsTitle.style.display = '';
+    alertsEl.innerHTML = alerts.slice(0,5).map(p => {
+      const q = DB.stock[p.id]||0;
+      return `<div class="alert-item" data-pid="${p.id}" onclick="handleAlertClick(this)">
+        <div class="alert-dot"></div>
+        <div class="alert-name">${p.name}</div>
+        <div class="alert-qty">${q === 0 ? 'ZERADO' : 'só ' + q}</div>
+      </div>`;
+    }).join('');
+  } else {
+    alertsTitle.style.display = 'none';
+    alertsEl.innerHTML = '';
+  }
+
+  // recent (last 6 moved)
+  const recentEl = document.getElementById('recent-list');
+  const recent = [...DB.products].sort((a,b) => {
+    const ah = DB.history.findIndex(h => h.pid === a.id);
+    const bh = DB.history.findIndex(h => h.pid === b.id);
+    return (ah === -1 ? 9999 : ah) - (bh === -1 ? 9999 : bh);
+  }).slice(0, 6);
+
+  if (DB.products.length === 0) {
+    recentEl.innerHTML = `<div class="empty"><div class="empty-icon">🛒</div><h3>Estoque vazio</h3><p>Escaneie um produto para começar</p></div>`;
+  } else {
+    recentEl.innerHTML = recent.map(p => productItemHTML(p, false)).join('');
+  }
+}
+
+function productItemHTML(p, clickable=true) {
+  const qty = DB.stock[p.id] || 0;
+  const qc = qtyClass(qty, p.alert);
+  let expBadge = '';
+  // FIX #2: não exibe validade se zerado
+  if (p.expiry && qty > 0) {
+    const diff = (new Date(p.expiry) - new Date()) / 86400000;
+    if (diff < 0) expBadge = `<span class="expiry-badge expiry-expired">Vencido</span>`;
+    else if (diff < 7) expBadge = `<span class="expiry-badge expiry-soon">Vence em ${Math.ceil(diff)}d</span>`;
+    else expBadge = `<span class="expiry-badge expiry-ok">Val. ${new Date(p.expiry).toLocaleDateString('pt-BR')}</span>`;
+  }
+  return `<div class="product-item" data-pid="${p.id}" ${clickable ? 'onclick="handleProductClick(this)"' : 'style="cursor:default"'}>
+    <div class="product-emoji">${EMOJIS[p.cat]||'📦'}</div>
+    <div class="product-info">
+      <div class="product-name">${p.name}</div>
+      <div class="product-cat">${p.cat}${expBadge ? ' · '+expBadge : ''}</div>
+    </div>
+    <div class="product-qty">
+      <div class="qty-num ${qc}">${qty}</div>
+      <div class="qty-label">unid.</div>
+    </div>
+  </div>`;
+}
+
+// Stock screen
+let _filterCat = 'Todos';
+let _filterText = '';
+
+function renderCatTabs() {
+  const cats = ['Todos', ...new Set(DB.products.map(p=>p.cat))];
+  const tabs = document.getElementById('cat-tabs');
+  tabs.innerHTML = cats.map(c =>
+    `<button class="cat-tab${c===_filterCat?' active':''}" onclick="filterCat('${c}',this)">${c}</button>`
+  ).join('');
+}
+
+function filterCat(cat, btn) {
+  _filterCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderStock();
+}
+
+function filterProducts() {
+  _filterText = document.getElementById('search-input').value.toLowerCase();
+  renderStock();
+}
+
+function renderStock() {
+  renderCatTabs();
+  let products = DB.products;
+  if (_filterCat !== 'Todos') products = products.filter(p=>p.cat===_filterCat);
+  if (_filterText) products = products.filter(p=>p.name.toLowerCase().includes(_filterText));
+  products.sort((a,b) => a.name.localeCompare(b.name));
+  const el = document.getElementById('stock-list');
+  if (products.length === 0) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><h3>Nenhum produto</h3><p>Tente outro filtro ou escaneie algo novo</p></div>`;
+  } else {
+    el.innerHTML = products.map(p => productItemHTML(p)).join('');
+  }
+}
+
+function renderHistory() {
+  const el = document.getElementById('hist-list');
+  if (DB.history.length === 0) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><h3>Sem movimentos</h3><p>O histórico aparece aqui</p></div>`;
+    return;
+  }
+  el.innerHTML = DB.history.slice(0, 100).map(h => {
+    const p = DB.products.find(x=>x.id===h.pid);
+    const name = p ? p.name : (h.deletedName ? `${h.deletedName} (removido)` : 'Produto removido');
+    const date = new Date(h.date).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const icon = h.type==='entry' ? '📥' : '📤';
+    const sign = h.type==='entry' ? '+' : '−';
+    return `<div class="hist-item">
+      <div class="hist-icon ${h.type}">${icon}</div>
+      <div class="hist-info">
+        <div class="hist-name">${name}</div>
+        <div class="hist-date">${date}</div>
+      </div>
+      <div class="hist-qty ${h.type}">${sign}${h.qty}</div>
+    </div>`;
+  }).join('');
+}
+
+// FIX #6: set de marcados; se vazio → envia todos
+let _shoppingChecked = new Set();
+
+function renderShopping() {
+  const items = DB.products.filter(p => (DB.stock[p.id]||0) <= (p.alert||2)).sort((a,b)=>a.cat.localeCompare(b.cat));
+  const el = document.getElementById('shopping-list');
+  if (items.length === 0) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><h3>Tudo em ordem!</h3><p>Nenhum item para comprar no momento</p></div>`;
+    return;
+  }
+  el.innerHTML = items.map(p => {
+    const checked = _shoppingChecked.has(p.id);
+    const qty = DB.stock[p.id]||0;
+    return `<div class="shopping-item${checked?' checked':''}" onclick="toggleShoppingCheck('${p.id}')">
+      <div class="check-circle">${checked?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}</div>
+      <div class="product-emoji" style="width:38px;height:38px;font-size:18px">${EMOJIS[p.cat]||'📦'}</div>
+      <div class="product-info">
+        <div class="product-name">${p.name}</div>
+        <div class="product-cat">${p.cat} · ${qty===0?'<span style="color:var(--red)">Zerado</span>':'<span style="color:var(--yellow)">Só '+qty+'</span>'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleShoppingCheck(id) {
+  if (_shoppingChecked.has(id)) _shoppingChecked.delete(id);
+  else _shoppingChecked.add(id);
+  renderShopping();
+}
+
+function shareWhatsapp() {
+  // FIX #6: se algum marcado → envia só marcados; senão envia todos
+  const allItems = DB.products.filter(p => (DB.stock[p.id]||0) <= (p.alert||2));
+  if (!allItems.length) { showToast('Nenhum item para comprar!'); return; }
+  const toSend = _shoppingChecked.size > 0
+    ? allItems.filter(p => _shoppingChecked.has(p.id))
+    : allItems;
+  if (!toSend.length) { showToast('Nenhum item selecionado!'); return; }
+  const lines = toSend.map(p => {
+    const q = DB.stock[p.id]||0;
+    return `• ${p.name}${q===0?' (ZERADO)':' ('+q+' restante)'}`;
+  });
+  const text = `🛒 *Lista de Compras*\n\n${lines.join('\n')}\n\n_Gerado pelo app Despensa_`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(text));
+}
+
+// ════════════════════════════════════════
+//  MODAL UTILS
+// ════════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+// close on overlay click (exceto product-modal que tem handler próprio)
+document.querySelectorAll('.modal-overlay').forEach(ov => {
+  if (ov.id === 'product-modal') return;
+  ov.addEventListener('click', e => { if (e.target === ov) closeModal(ov.id); });
+});
+
+// ════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+renderHome();
+renderCatTabs();
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/estoque-manager/sw.js', { scope: '/estoque-manager/' })
+    .catch(e => console.warn('SW:', e));
+}
+</script>
+
+<!-- ══════════════════════════════════════════
+     SCANNER OVERLAY — completamente isolado
+     z-index 9999, fora do #app, invisível por padrão
+     Só existe quando aberto, some completamente ao fechar
+════════════════════════════════════════════ -->
+<div id="scanner-overlay" style="
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  touch-action: none;
+">
+  <video id="scanner-video" autoplay muted playsinline style="
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  "></video>
+
+  <!-- Header -->
+  <div style="
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 52px 20px 16px;
+  ">
+    <button onclick="closeScanner()" style="
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      touch-action: manipulation;
+    ">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </button>
+    <h2 style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:white;">Escanear</h2>
+  </div>
+
+  <!-- Viewfinder -->
+  <div style="
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  ">
+    <div id="scan-frame" style="width:240px;height:240px;position:relative;">
+      <!-- cantos do frame -->
+      <div style="position:absolute;top:0;left:0;width:32px;height:32px;border-top:3px solid #a78bfa;border-left:3px solid #a78bfa;border-radius:4px 0 0 0;"></div>
+      <div style="position:absolute;top:0;right:0;width:32px;height:32px;border-top:3px solid #a78bfa;border-right:3px solid #a78bfa;border-radius:0 4px 0 0;"></div>
+      <div style="position:absolute;bottom:0;left:0;width:32px;height:32px;border-bottom:3px solid #a78bfa;border-left:3px solid #a78bfa;border-radius:0 0 0 4px;"></div>
+      <div style="position:absolute;bottom:0;right:0;width:32px;height:32px;border-bottom:3px solid #a78bfa;border-right:3px solid #a78bfa;border-radius:0 0 4px 0;"></div>
+      <!-- linha de scan -->
+      <div style="
+        position:absolute;left:4px;right:4px;height:2px;
+        background:linear-gradient(90deg,transparent,#a78bfa,transparent);
+        box-shadow:0 0 8px #7c6af7;
+        animation:scanMove 2s ease-in-out infinite;
+      "></div>
+    </div>
+    <p style="margin-top:28px;color:rgba(255,255,255,0.7);font-size:13px;text-align:center;padding:0 40px;">
+      Aponte para um QR Code ou código de barras
+    </p>
+  </div>
+
+  <!-- Botão manual — na parte inferior, bem longe de qualquer outro elemento -->
+  <div style="
+    position: absolute;
+    bottom: 48px;
+    left: 20px; right: 20px;
+  ">
+    <button onclick="manualCode()" style="
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      touch-action: manipulation;
+    ">✏️ Digitar código manualmente</button>
+  </div>
+</div>
+
+
+<script>
+// Solicita persistência de dados — evita que iOS limpe o localStorage
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().then(granted => {
+    console.log('Persistência:', granted ? 'PERMITIDA' : 'NEGADA');
+  });
+}
+
+// Impede que links internos abram o Safari no iOS
+document.addEventListener('click', function(e) {
+  const a = e.target.closest('a');
+  if (!a) return;
+  try {
+    if (new URL(a.href).origin === location.origin) {
+      e.preventDefault();
+      window.location.href = a.href;
+    }
+  } catch(err) {}
+});
+</script>
+</body>
+</html>
